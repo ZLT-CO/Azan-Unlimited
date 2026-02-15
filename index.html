@@ -107,13 +107,63 @@ footer {
     text-align:center;
     color:#666;
 }
+.settings {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(27,94,32,0.95);
+  backdrop-filter: blur(20px);
+  padding: 30px;
+  border-radius: 20px;
+  width: 300px;
+  z-index: 2000;
+  box-shadow: 0 0 40px rgba(0,200,83,0.8);
+}
+
+.settings label {
+  display: block;
+  margin-top: 15px;
+}
+
+.settings select,
+.settings input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
+}
+
+.hidden {
+  display: none;
+}
+
 </style>
 </head>
 <body>
 
 <header>
+    <div id="settingsPanel" class="settings hidden">
+  <h2>Settings</h2>
+
+  <label>Reciter:</label>
+  <select id="reciterSelect">
+    <option value="Mishary">Mishary Rashid</option>
+    <option value="Saad">Saad Al-Ghamdi</option>
+  </select>
+
+  <label>
+    <input type="checkbox" id="notifToggle" checked>
+    Enable Notifications
+  </label>
+
+  <label>Glass Transparency:</label>
+  <input type="range" id="glassSlider" min="0.4" max="1" step="0.05" value="0.75">
+
+  <button class="btn" onclick="closeSettings()">Close</button>
+</div>
+
     <h1><a href="#">Azan Unlimited</a></h1>
     <nav>
+        <a href="#" onclick="openSettings()">Settings</a>
         <a href="https://github.com/ZLT-CO" target="_blank">GitHub</a>
         <a href="https://discord.gg/qGbqGC2uCs" target="_blank">Discord</a>
     </nav>
@@ -203,22 +253,43 @@ function generatePrayerCards(){
 
 // ===== SCHEDULE NOTIFICATIONS =====
 function scheduleNotifications(){
+
+    // Respect settings toggle
+    if(!notificationsEnabled) return;
+
     if(!("Notification" in window)) return;
-    if(Notification.permission!=="granted") Notification.requestPermission();
+
+    if(Notification.permission !== "granted"){
+        Notification.requestPermission();
+        return;
+    }
+
     const now = new Date();
+
     for(const p in prayerTimes){
-        const time = prayerTimes[p].split(":");
+
+        // Clean time (remove timezone if present)
+        const cleanTime = prayerTimes[p].split(" ")[0];
+        const [hour, minute] = cleanTime.split(":").map(Number);
+
         const notifTime = new Date();
-        notifTime.setHours(parseInt(time[0]));
-        notifTime.setMinutes(parseInt(time[1]));
-        notifTime.setSeconds(0);
-        if(notifTime>now){
-            const timeout = notifTime.getTime()-now.getTime();
-            setTimeout(()=>{
-                new Notification(`Time for ${p}`, {body:`Tap to play Adhaan!`});
-                playAdhaan();
-            },timeout);
-        }
+        notifTime.setHours(hour, minute, 0, 0);
+
+        // If prayer already passed, skip
+        if(notifTime <= now) continue;
+
+        const timeout = notifTime.getTime() - now.getTime();
+
+        setTimeout(() => {
+
+            new Notification(`Time for ${p}`, {
+                body: "Tap to open Azan Unlimited",
+                icon: "icon.png"
+            });
+
+            playAdhaan();
+
+        }, timeout);
     }
 }
 
@@ -266,6 +337,69 @@ document.addEventListener("DOMContentLoaded", ()=>{
     getLocationAndPrayerTimes();
     initQibla();
 });
+let notificationsEnabled = true;
+let glassOpacity = 0.75;
+
+// OPEN / CLOSE SETTINGS
+function openSettings(){
+  document.getElementById("settingsPanel").classList.remove("hidden");
+}
+
+function closeSettings(){
+  document.getElementById("settingsPanel").classList.add("hidden");
+}
+
+// LOAD SAVED SETTINGS
+document.addEventListener("DOMContentLoaded", ()=>{
+  const savedReciter = localStorage.getItem("reciter");
+  const savedNotif = localStorage.getItem("notifications");
+  const savedGlass = localStorage.getItem("glass");
+
+  if(savedReciter){
+    selectedReciter = savedReciter;
+    document.getElementById("reciterSelect").value = savedReciter;
+  }
+
+  if(savedNotif){
+    notificationsEnabled = savedNotif === "true";
+    document.getElementById("notifToggle").checked = notificationsEnabled;
+  }
+
+  if(savedGlass){
+    glassOpacity = savedGlass;
+    document.getElementById("glassSlider").value = savedGlass;
+    updateGlass();
+  }
+
+  getLocationAndPrayerTimes();
+  initQibla();
+});
+
+// RECITER CHANGE
+document.getElementById("reciterSelect").addEventListener("change", function(){
+  selectedReciter = this.value;
+  localStorage.setItem("reciter", selectedReciter);
+});
+
+// NOTIFICATION TOGGLE
+document.getElementById("notifToggle").addEventListener("change", function(){
+  notificationsEnabled = this.checked;
+  localStorage.setItem("notifications", notificationsEnabled);
+});
+
+// GLASS OPACITY CONTROL
+document.getElementById("glassSlider").addEventListener("input", function(){
+  glassOpacity = this.value;
+  localStorage.setItem("glass", glassOpacity);
+  updateGlass();
+});
+
+function updateGlass(){
+  document.querySelectorAll(".card").forEach(card=>{
+    card.style.background = `rgba(27,94,32,${glassOpacity})`;
+  });
+}
+
 </script>
 
 </body>
