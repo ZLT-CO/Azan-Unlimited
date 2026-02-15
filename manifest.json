@@ -1,21 +1,73 @@
 {
-  "name": "Azan Unlimited",
+  "id": "/Azan-Unlimited/",
+  "name": "Azan Unlimited - Prayer Times",
   "short_name": "Azan",
-  "start_url": ".",
+  "description": "Azan Unlimited provides accurate prayer times and Adhan notifications with a modern green design.",
+  "start_url": "/Azan-Unlimited/index.html",
+  "scope": "/Azan-Unlimited/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
   "background_color": "#0f1117",
   "theme_color": "#1B5E20",
-  "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "utilities", "religion"],
+  "iarc_rating_id": "",
+  "prefer_related_applications": false,
+  "related_applications": [],
   "icons": [
     {
-      "src": "android-chrome-192x192.png",
+      "src": "/Azan-Unlimited/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "android-chrome-512x512.png",
+      "src": "/Azan-Unlimited/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/Azan-Unlimited/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Prayer Times",
+      "short_name": "Salat",
+      "description": "View today's prayer times",
+      "url": "/Azan-Unlimited/index.html#salat",
+      "icons": [
+        {
+          "src": "/Azan-Unlimited/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Qibla Compass",
+      "short_name": "Qibla",
+      "description": "Open Qibla direction compass",
+      "url": "/Azan-Unlimited/index.html#qibla",
+      "icons": [
+        {
+          "src": "/Azan-Unlimited/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }
