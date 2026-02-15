@@ -184,235 +184,212 @@ footer {
 </footer>
 
 <script>
-// ===== GLOBAL VARIABLES =====
+// ===== RECITERS OBJECT (ONLY ONE — DO NOT DUPLICATE) =====
 const reciters = {
-    'Mishary': 'mishary.mp3',
-    'Saad': 'saad.mp3'
+  mishary: { name: "Mishary Rashid", file: "mishary.mp3" },
+  saad: { name: "Saad Al-Ghamdi", file: "saad.mp3" },
+  abdulbasit: { name: "Abdul Basit", file: "abdulbasit.mp3" },
+  sudais: { name: "Abdur Rahman Al-Sudais", file: "sudais.mp3" },
+  ajmi: { name: "Ahmed Al-Ajmi", file: "ajmi.mp3" },
+  minshawi: { name: "Minshawi", file: "minshawi.mp3" },
+  hudhayfi: { name: "Ali Al-Hudhayfi", file: "hudhayfi.mp3" },
+  maher: { name: "Maher Al-Muaiqly", file: "maher.mp3" },
+  yasser: { name: "Yasser Al-Dosari", file: "yasser.mp3" }
 };
-let selectedReciter = 'Mishary';
+
+// ===== GLOBAL VARIABLES =====
+let selectedReciter = "mishary";
 let prayerTimes = {};
-let locationData = {latitude:null, longitude:null};
-
-// ===== HTML HELPERS =====
-function createPrayerCard(name, time){
-    const container = document.getElementById('prayers');
-    const card = document.createElement('div');
-    card.className = 'card';
-    const h2 = document.createElement('h2');
-    h2.textContent = name;
-    const p = document.createElement('p');
-    p.textContent = time || '--:--';
-    const btn = document.createElement('button');
-    btn.className = 'btn';
-    btn.textContent = 'Play Adhaan';
-    btn.onclick = () => playAdhaan();
-    card.appendChild(h2);
-    card.appendChild(p);
-    card.appendChild(btn);
-    container.appendChild(card);
-}
-
-// ===== ADHAAN PLAYER =====
-function playAdhaan(){
-    const audio = new Audio(reciters[selectedReciter]);
-    audio.play();
-}
-
-// ===== FETCH LOCATION & PRAYER TIMES =====
-async function getLocationAndPrayerTimes(){
-    if(navigator.geolocation){
-        navigator.geolocation.getCurrentPosition(async (pos)=>{
-            locationData.latitude = pos.coords.latitude;
-            locationData.longitude = pos.coords.longitude;
-            await fetchPrayerTimes();
-            generatePrayerCards();
-            scheduleNotifications();
-        }, ()=>{alert("Location permission denied. Cannot fetch prayer times.");});
-    }else{
-        alert("Geolocation not supported!");
-    }
-}
-
-// ===== FETCH PRAYER TIMES =====
-async function fetchPrayerTimes(){
-    const lat = locationData.latitude;
-    const lon = locationData.longitude;
-    try{
-        const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`);
-        const data = await res.json();
-        prayerTimes = data.data.timings;
-    }catch(e){
-        console.error("Error fetching prayer times:", e);
-    }
-}
-
-// ===== GENERATE PRAYER CARDS =====
-function generatePrayerCards(){
-    const container = document.getElementById('prayers');
-    container.innerHTML='';
-    for(const p in prayerTimes){
-        createPrayerCard(p, prayerTimes[p]);
-    }
-}
-
-// ===== SCHEDULE NOTIFICATIONS =====
-function scheduleNotifications(){
-
-    // Respect settings toggle
-    if(!notificationsEnabled) return;
-
-    if(!("Notification" in window)) return;
-
-    if(Notification.permission !== "granted"){
-        Notification.requestPermission();
-        return;
-    }
-
-    const now = new Date();
-
-    for(const p in prayerTimes){
-
-        // Clean time (remove timezone if present)
-        const cleanTime = prayerTimes[p].split(" ")[0];
-        const [hour, minute] = cleanTime.split(":").map(Number);
-
-        const notifTime = new Date();
-        notifTime.setHours(hour, minute, 0, 0);
-
-        // If prayer already passed, skip
-        if(notifTime <= now) continue;
-
-        const timeout = notifTime.getTime() - now.getTime();
-
-        setTimeout(() => {
-
-            new Notification(`Time for ${p}`, {
-                body: "Tap to open Azan Unlimited",
-                icon: "icon.png"
-            });
-
-            playAdhaan();
-
-        }, timeout);
-    }
-}
-
-// ===== QIBLA COMPASS =====
-function initQibla(){
-    const canvas = document.getElementById('qiblaCanvas');
-    const ctx = canvas.getContext('2d');
-    if(window.DeviceOrientationEvent){
-        window.addEventListener('deviceorientation', function(event){
-            const alpha = event.alpha || 0;
-            drawCompass(ctx, alpha);
-        });
-    }else{
-        ctx.fillStyle="white";
-        ctx.fillText("Compass not supported", 20,150);
-    }
-}
-
-function drawCompass(ctx, alpha){
-    ctx.clearRect(0,0,300,300);
-    // Circle
-    ctx.beginPath();
-    ctx.arc(150,150,140,0,2*Math.PI);
-    ctx.fillStyle = "rgba(27,94,32,0.5)";
-    ctx.fill();
-    ctx.strokeStyle = "#00c853";
-    ctx.lineWidth = 4;
-    ctx.stroke();
-    // Qibla pointer
-    const qiblaBearing = 119.5; 
-    const angle = ((qiblaBearing - alpha)*Math.PI/180);
-    ctx.beginPath();
-    ctx.moveTo(150,150);
-    ctx.lineTo(150 + 100*Math.sin(angle), 150 - 100*Math.cos(angle));
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 6;
-    ctx.stroke();
-}
-
-// ===== RECITER SELECTION =====
-function changeReciter(name){ selectedReciter=name; }
-
-// ===== INIT AFTER DOM LOAD =====
-document.addEventListener("DOMContentLoaded", ()=>{
-    getLocationAndPrayerTimes();
-    initQibla();
-});
+let locationData = { latitude: null, longitude: null };
 let notificationsEnabled = true;
 let glassOpacity = 0.75;
 
-// OPEN / CLOSE SETTINGS
-function openSettings(){
-  document.getElementById("settingsPanel").classList.remove("hidden");
+// ===== LOAD RECITER DROPDOWN =====
+function loadReciters() {
+  const select = document.getElementById("reciterSelect");
+  if (!select) return;
+
+  select.innerHTML = "";
+
+  for (const key in reciters) {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = reciters[key].name;
+    select.appendChild(option);
+  }
+
+  const saved = localStorage.getItem("reciter") || "mishary";
+  selectedReciter = saved;
+  select.value = saved;
 }
 
-function closeSettings(){
-  document.getElementById("settingsPanel").classList.add("hidden");
+// ===== ADHAAN PLAYER =====
+function playAdhaan() {
+  const reciter = reciters[selectedReciter];
+  if (!reciter) return;
+
+  const audio = new Audio(reciter.file);
+  audio.play();
 }
 
-// LOAD SAVED SETTINGS
-document.addEventListener("DOMContentLoaded", ()=>{
-  const savedReciter = localStorage.getItem("reciter");
+// ===== CREATE PRAYER CARD =====
+function createPrayerCard(name, time) {
+  const container = document.getElementById("prayers");
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const h2 = document.createElement("h2");
+  h2.textContent = name;
+
+  const p = document.createElement("p");
+  p.textContent = time || "--:--";
+
+  const btn = document.createElement("button");
+  btn.className = "btn";
+  btn.textContent = "Play Adhaan";
+  btn.onclick = playAdhaan;
+
+  card.appendChild(h2);
+  card.appendChild(p);
+  card.appendChild(btn);
+  container.appendChild(card);
+}
+
+// ===== FETCH LOCATION =====
+async function getLocationAndPrayerTimes() {
+  if (!navigator.geolocation) {
+    alert("Geolocation not supported!");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    locationData.latitude = pos.coords.latitude;
+    locationData.longitude = pos.coords.longitude;
+
+    await fetchPrayerTimes();
+    generatePrayerCards();
+    scheduleNotifications();
+  });
+}
+
+// ===== FETCH PRAYER TIMES =====
+async function fetchPrayerTimes() {
+  const lat = locationData.latitude;
+  const lon = locationData.longitude;
+
+  try {
+    const res = await fetch(
+      `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`
+    );
+    const data = await res.json();
+    prayerTimes = data.data.timings;
+  } catch (e) {
+    console.error("Error fetching prayer times:", e);
+  }
+}
+
+// ===== GENERATE PRAYER CARDS =====
+function generatePrayerCards() {
+  const container = document.getElementById("prayers");
+  container.innerHTML = "";
+
+  for (const p in prayerTimes) {
+    createPrayerCard(p, prayerTimes[p]);
+  }
+
+  updateGlass();
+}
+
+// ===== NOTIFICATIONS =====
+function scheduleNotifications() {
+  if (!notificationsEnabled) return;
+  if (!("Notification" in window)) return;
+
+  if (Notification.permission !== "granted") {
+    Notification.requestPermission();
+    return;
+  }
+
+  const now = new Date();
+
+  for (const p in prayerTimes) {
+    const cleanTime = prayerTimes[p].split(" ")[0];
+    const [hour, minute] = cleanTime.split(":").map(Number);
+
+    const notifTime = new Date();
+    notifTime.setHours(hour, minute, 0, 0);
+
+    if (notifTime <= now) continue;
+
+    const timeout = notifTime.getTime() - now.getTime();
+
+    setTimeout(() => {
+      new Notification(`Time for ${p}`, {
+        body: "Tap to open Azan Unlimited",
+        icon: "icon.png"
+      });
+
+      playAdhaan();
+    }, timeout);
+  }
+}
+
+// ===== GLASS EFFECT =====
+function updateGlass() {
+  document.querySelectorAll(".card").forEach(card => {
+    card.style.background = `rgba(27,94,32,${glassOpacity})`;
+  });
+}
+
+// ===== SETTINGS EVENTS =====
+function setupSettings() {
+  loadReciters();
+
   const savedNotif = localStorage.getItem("notifications");
   const savedGlass = localStorage.getItem("glass");
 
-  if(savedReciter){
-    selectedReciter = savedReciter;
-    document.getElementById("reciterSelect").value = savedReciter;
-  }
-
-  if(savedNotif){
+  if (savedNotif) {
     notificationsEnabled = savedNotif === "true";
     document.getElementById("notifToggle").checked = notificationsEnabled;
   }
 
-  if(savedGlass){
+  if (savedGlass) {
     glassOpacity = savedGlass;
     document.getElementById("glassSlider").value = savedGlass;
-    updateGlass();
   }
 
-  getLocationAndPrayerTimes();
-  initQibla();
-});
+  document.getElementById("reciterSelect").addEventListener("change", function () {
+    selectedReciter = this.value;
+    localStorage.setItem("reciter", selectedReciter);
+  });
 
-// RECITER CHANGE
-document.getElementById("reciterSelect").addEventListener("change", function(){
-  selectedReciter = this.value;
-  localStorage.setItem("reciter", selectedReciter);
-});
+  document.getElementById("notifToggle").addEventListener("change", function () {
+    notificationsEnabled = this.checked;
+    localStorage.setItem("notifications", notificationsEnabled);
+  });
 
-// NOTIFICATION TOGGLE
-document.getElementById("notifToggle").addEventListener("change", function(){
-  notificationsEnabled = this.checked;
-  localStorage.setItem("notifications", notificationsEnabled);
-});
-
-// GLASS OPACITY CONTROL
-document.getElementById("glassSlider").addEventListener("input", function(){
-  glassOpacity = this.value;
-  localStorage.setItem("glass", glassOpacity);
-  updateGlass();
-});
-
-function updateGlass(){
-  document.querySelectorAll(".card").forEach(card=>{
-    card.style.background = `rgba(27,94,32,${glassOpacity})`;
+  document.getElementById("glassSlider").addEventListener("input", function () {
+    glassOpacity = this.value;
+    localStorage.setItem("glass", glassOpacity);
+    updateGlass();
   });
 }
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(reg => console.log("Service Worker registered"))
+
+// ===== INIT =====
+document.addEventListener("DOMContentLoaded", () => {
+  setupSettings();
+  getLocationAndPrayerTimes();
+});
+
+// ===== SERVICE WORKER =====
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js")
+      .then(() => console.log("Service Worker registered"))
       .catch(err => console.log("Service Worker failed:", err));
   });
 }
 
-
-</script>
 
 </body>
 </html>
