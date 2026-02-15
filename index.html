@@ -399,6 +399,14 @@ function updateGlass(){
     card.style.background = `rgba(27,94,32,${glassOpacity})`;
   });
 }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log("Service Worker registered"))
+      .catch(err => console.log("Service Worker failed:", err));
+  });
+}
+
 
 </script>
 
