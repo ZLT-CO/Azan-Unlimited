@@ -4,392 +4,287 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Azan Unlimited</title>
-<link rel="icon" href="favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="site.webmanifest">
-
-<meta name="theme-color" content="#1B5E20">
-<meta name="apple-mobile-web-app-capable" content="yes">
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body {
+body{
     margin:0;
     font-family:'Inter',sans-serif;
-    background:#0f1117;
+    background:linear-gradient(135deg,#0f1117,#121826);
     color:white;
-    overflow-x:hidden;
 }
 
-header {
-    padding: 20px 40px;
-    background: #161b22cc;
-    backdrop-filter: blur(10px);
+header{
+    padding:20px 30px;
     display:flex;
-    justify-content: space-between;
+    justify-content:space-between;
     align-items:center;
-    position:sticky;
-    top:0;
-    z-index:1000;
+    backdrop-filter:blur(10px);
+    background:rgba(0,0,0,0.4);
 }
 
-header h1 a {
-    color:white;
-    text-decoration:none;
-}
-
-header nav a {
-    margin-left:25px;
-    color:#aaa;
-    text-decoration:none;
-    transition:0.3s;
-}
-
-header nav a:hover {
-    color:#66bb6a;
-}
-
-#prayers {
-    margin-top:20px;
-}
-
-.card {
-    background: rgba(27,94,32,0.75);
-    backdrop-filter: blur(15px);
-    border-radius: 20px;
-    padding:25px;
-    margin:20px auto;
-    max-width:400px;
-    box-shadow:0 8px 25px rgba(0,200,83,0.5);
-    transition:0.3s;
-}
-
-.card:hover {
-    transform:translateY(-5px);
-    box-shadow:0 12px 35px rgba(0,200,83,0.8);
-}
-
-.card h2 {
+h1{
     margin:0;
-    font-size:1.8rem;
+    font-weight:700;
+    letter-spacing:1px;
 }
 
-.card p {
-    margin:5px 0 15px 0;
-    color:#ccc;
-}
-
-.btn {
-    background:#66bb6a;
-    color:white;
-    padding:10px 25px;
-    border-radius:12px;
-    border:none;
+button{
     cursor:pointer;
+}
+
+.main{
+    padding:40px 20px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+.card{
+    width:100%;
+    max-width:420px;
+    background:rgba(27,94,32,0.7);
+    backdrop-filter:blur(20px);
+    border-radius:20px;
+    padding:25px;
+    margin-bottom:20px;
+    box-shadow:0 10px 40px rgba(0,200,83,0.4);
+    transition:.3s;
+}
+
+.card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 15px 50px rgba(0,200,83,0.7);
+}
+
+.card h2{
+    margin:0;
+    font-size:1.6rem;
+}
+
+.time{
+    font-size:1.3rem;
+    color:#ddd;
+    margin:8px 0 15px 0;
+}
+
+.btn{
+    background:#66bb6a;
+    border:none;
+    padding:10px 20px;
+    border-radius:12px;
     font-weight:600;
-    transition:0.3s;
+    color:white;
 }
 
-.btn:hover {
-    background:#00c853;
-    box-shadow:0 0 20px rgba(0,200,83,0.7);
-}
-
-#qiblaCanvas {
-    display:block;
-    margin:20px auto;
-    background: rgba(27,94,32,0.5);
-    border-radius: 20px;
-    backdrop-filter: blur(15px);
-}
-
-footer {
+.settings{
+    position:fixed;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(20,40,20,0.95);
+    backdrop-filter:blur(25px);
     padding:30px;
+    border-radius:20px;
+    width:320px;
+    box-shadow:0 0 50px rgba(0,200,83,0.7);
+}
+
+.settings h2{
+    margin-top:0;
+}
+
+.settings label{
+    display:block;
+    margin-top:12px;
+    font-size:0.9rem;
+}
+
+.hidden{
+    display:none;
+}
+
+footer{
     text-align:center;
+    padding:30px;
     color:#666;
 }
-.settings {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(27,94,32,0.95);
-  backdrop-filter: blur(20px);
-  padding: 30px;
-  border-radius: 20px;
-  width: 300px;
-  z-index: 2000;
-  box-shadow: 0 0 40px rgba(0,200,83,0.8);
-}
-
-.settings label {
-  display: block;
-  margin-top: 15px;
-}
-
-.settings select,
-.settings input[type="range"] {
-  width: 100%;
-  margin-top: 5px;
-}
-
-.hidden {
-  display: none;
-}
-
 </style>
 </head>
 <body>
 
 <header>
-    <div id="settingsPanel" class="settings hidden">
-  <h2>Settings</h2>
-
-  <label>Reciter:</label>
-  <select id="reciterSelect">
-    <option value="Mishary">Mishary Rashid</option>
-    <option value="Saad">Saad Al-Ghamdi</option>
-  </select>
-
-  <label>
-    <input type="checkbox" id="notifToggle" checked>
-    Enable Notifications
-  </label>
-
-  <label>Glass Transparency:</label>
-  <input type="range" id="glassSlider" min="0.4" max="1" step="0.05" value="0.75">
-
-  <button class="btn" onclick="closeSettings()">Close</button>
-</div>
-
-    <h1><a href="#">Azan Unlimited</a></h1>
-    <nav>
-        <a href="#" onclick="openSettings()">Settings</a>
-        <a href="https://github.com/ZLT-CO" target="_blank">GitHub</a>
-        <a href="https://discord.gg/qGbqGC2uCs" target="_blank">Discord</a>
-    </nav>
+<h1>Azan Unlimited</h1>
+<button class="btn" onclick="toggleSettings()">Settings</button>
 </header>
 
-<div id="prayers">
-    <!-- Prayer cards generated here -->
+<div class="main" id="prayers"></div>
+
+<div id="settingsPanel" class="settings hidden">
+<h2>Settings</h2>
+
+<label>Reciter</label>
+<select id="reciterSelect"></select>
+
+<h3 style="margin-top:20px;">Notifications</h3>
+
+<div id="notifControls"></div>
+
+<button class="btn" style="margin-top:20px;" onclick="toggleSettings()">Close</button>
 </div>
 
-<canvas id="qiblaCanvas" width="300" height="300"></canvas>
-
-<footer>
-    © 2026 ZLT Co. All rights reserved.
-</footer>
+<footer>© 2026 ZLT Co.</footer>
 
 <script>
-// ===== RECITERS OBJECT (ONLY ONE — DO NOT DUPLICATE) =====
-const reciters = {
-  mishary: { name: "Mishary Rashid", file: "mishary.mp3" },
-  saad: { name: "Saad Al-Ghamdi", file: "saad.mp3" },
-  abdulbasit: { name: "Abdul Basit", file: "abdulbasit.mp3" },
-  sudais: { name: "Abdur Rahman Al-Sudais", file: "sudais.mp3" },
-  ajmi: { name: "Ahmed Al-Ajmi", file: "ajmi.mp3" },
-  minshawi: { name: "Minshawi", file: "minshawi.mp3" },
-  hudhayfi: { name: "Ali Al-Hudhayfi", file: "hudhayfi.mp3" },
-  maher: { name: "Maher Al-Muaiqly", file: "maher.mp3" },
-  yasser: { name: "Yasser Al-Dosari", file: "yasser.mp3" }
+
+// ===== CONFIG =====
+const reciters={
+mishary:{name:"Mishary Rashid",file:"mishary.mp3"},
+saad:{name:"Saad Al-Ghamdi",file:"saad.mp3"},
+maher:{name:"Maher Al-Muaiqly",file:"maher.mp3"},
+sudais:{name:"Sudais",file:"sudais.mp3"}
 };
 
-// ===== GLOBAL VARIABLES =====
-let selectedReciter = "mishary";
-let prayerTimes = {};
-let locationData = { latitude: null, longitude: null };
-let notificationsEnabled = true;
-let glassOpacity = 0.75;
+const allowedPrayers=["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"];
 
-// ===== LOAD RECITER DROPDOWN =====
-function loadReciters() {
-  const select = document.getElementById("reciterSelect");
-  if (!select) return;
+let selectedReciter="mishary";
+let prayerTimes={};
+let notifications={};
 
-  select.innerHTML = "";
+// ===== INIT =====
+document.addEventListener("DOMContentLoaded",()=>{
+loadReciters();
+loadNotificationSettings();
+getLocation();
+});
 
-  for (const key in reciters) {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = reciters[key].name;
-    select.appendChild(option);
-  }
-
-  const saved = localStorage.getItem("reciter") || "mishary";
-  selectedReciter = saved;
-  select.value = saved;
+// ===== UI =====
+function toggleSettings(){
+document.getElementById("settingsPanel").classList.toggle("hidden");
 }
 
-// ===== ADHAAN PLAYER =====
-function playAdhaan() {
-  const reciter = reciters[selectedReciter];
-  if (!reciter) return;
+function loadReciters(){
+const select=document.getElementById("reciterSelect");
+select.innerHTML="";
 
-  const audio = new Audio(reciter.file);
-  audio.play();
+for(const key in reciters){
+const option=document.createElement("option");
+option.value=key;
+option.textContent=reciters[key].name;
+select.appendChild(option);
 }
 
-// ===== CREATE PRAYER CARD =====
-function createPrayerCard(name, time) {
-  const container = document.getElementById("prayers");
-  const card = document.createElement("div");
-  card.className = "card";
+selectedReciter=localStorage.getItem("reciter")||"mishary";
+select.value=selectedReciter;
 
-  const h2 = document.createElement("h2");
-  h2.textContent = name;
+select.addEventListener("change",function(){
+selectedReciter=this.value;
+localStorage.setItem("reciter",selectedReciter);
+});
+}
 
-  const p = document.createElement("p");
-  p.textContent = time || "--:--";
+function loadNotificationSettings(){
+const container=document.getElementById("notifControls");
+container.innerHTML="";
 
-  const btn = document.createElement("button");
-  btn.className = "btn";
-  btn.textContent = "Play Adhaan";
-  btn.onclick = playAdhaan;
+allowedPrayers.forEach(prayer=>{
+if(localStorage.getItem("notif_"+prayer)===null){
+localStorage.setItem("notif_"+prayer,"true");
+}
+notifications[prayer]=localStorage.getItem("notif_"+prayer")==="true";
 
-  card.appendChild(h2);
-  card.appendChild(p);
-  card.appendChild(btn);
-  container.appendChild(card);
+const label=document.createElement("label");
+label.innerHTML=`
+<input type="checkbox" id="toggle_${prayer}" ${notifications[prayer]?"checked":""}>
+ ${prayer}
+`;
+container.appendChild(label);
+
+document.getElementById("toggle_"+prayer).addEventListener("change",function(){
+notifications[prayer]=this.checked;
+localStorage.setItem("notif_"+prayer,this.checked);
+});
+});
 }
 
 // ===== FETCH LOCATION =====
-async function getLocationAndPrayerTimes() {
-  if (!navigator.geolocation) {
-    alert("Geolocation not supported!");
-    return;
-  }
+function getLocation(){
+navigator.geolocation.getCurrentPosition(async(pos)=>{
+const lat=pos.coords.latitude;
+const lon=pos.coords.longitude;
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    locationData.latitude = pos.coords.latitude;
-    locationData.longitude = pos.coords.longitude;
+const res=await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`);
+const data=await res.json();
+prayerTimes=data.data.timings;
 
-    await fetchPrayerTimes();
-    generatePrayerCards();
-    scheduleNotifications();
-  });
+renderPrayers();
+scheduleNotifications();
+});
 }
 
-// ===== FETCH PRAYER TIMES =====
-async function fetchPrayerTimes() {
-  const lat = locationData.latitude;
-  const lon = locationData.longitude;
+// ===== RENDER =====
+function renderPrayers(){
+const container=document.getElementById("prayers");
+container.innerHTML="";
 
-  try {
-    const res = await fetch(
-      `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`
-    );
-    const data = await res.json();
-    prayerTimes = data.data.timings;
-  } catch (e) {
-    console.error("Error fetching prayer times:", e);
-  }
+allowedPrayers.forEach(prayer=>{
+const time=prayerTimes[prayer];
+if(!time) return;
+
+const card=document.createElement("div");
+card.className="card";
+
+card.innerHTML=`
+<h2>${prayer}</h2>
+<div class="time">${time}</div>
+<button class="btn">Play Adhan</button>
+`;
+
+card.querySelector("button").onclick=playAdhan;
+container.appendChild(card);
+});
 }
 
-// ===== GENERATE PRAYER CARDS =====
-function generatePrayerCards() {
-  const container = document.getElementById("prayers");
-  container.innerHTML = "";
-
-  for (const p in prayerTimes) {
-    createPrayerCard(p, prayerTimes[p]);
-  }
-
-  updateGlass();
+// ===== AUDIO =====
+function playAdhan(){
+const audio=new Audio(reciters[selectedReciter].file);
+audio.play();
 }
 
 // ===== NOTIFICATIONS =====
-function scheduleNotifications() {
-  if (!notificationsEnabled) return;
-  if (!("Notification" in window)) return;
+function scheduleNotifications(){
 
-  if (Notification.permission !== "granted") {
-    Notification.requestPermission();
-    return;
-  }
-
-  const now = new Date();
-
-  for (const p in prayerTimes) {
-    const cleanTime = prayerTimes[p].split(" ")[0];
-    const [hour, minute] = cleanTime.split(":").map(Number);
-
-    const notifTime = new Date();
-    notifTime.setHours(hour, minute, 0, 0);
-
-    if (notifTime <= now) continue;
-
-    const timeout = notifTime.getTime() - now.getTime();
-
-    setTimeout(() => {
-      new Notification(`Time for ${p}`, {
-        body: "Tap to open Azan Unlimited",
-        icon: "icon.png"
-      });
-
-      playAdhaan();
-    }, timeout);
-  }
+if(Notification.permission!=="granted"){
+Notification.requestPermission();
 }
 
-// ===== GLASS EFFECT =====
-function updateGlass() {
-  document.querySelectorAll(".card").forEach(card => {
-    card.style.background = `rgba(27,94,32,${glassOpacity})`;
-  });
-}
+const now=new Date();
 
-// ===== SETTINGS EVENTS =====
-function setupSettings() {
-  loadReciters();
+allowedPrayers.forEach(prayer=>{
+if(!notifications[prayer]) return;
 
-  const savedNotif = localStorage.getItem("notifications");
-  const savedGlass = localStorage.getItem("glass");
+const time=prayerTimes[prayer];
+if(!time) return;
 
-  if (savedNotif) {
-    notificationsEnabled = savedNotif === "true";
-    document.getElementById("notifToggle").checked = notificationsEnabled;
-  }
+const [hour,minute]=time.split(":").map(Number);
 
-  if (savedGlass) {
-    glassOpacity = savedGlass;
-    document.getElementById("glassSlider").value = savedGlass;
-  }
+const notifTime=new Date();
+notifTime.setHours(hour,minute,0,0);
 
-  document.getElementById("reciterSelect").addEventListener("change", function () {
-    selectedReciter = this.value;
-    localStorage.setItem("reciter", selectedReciter);
-  });
+if(notifTime<=now) return;
 
-  document.getElementById("notifToggle").addEventListener("change", function () {
-    notificationsEnabled = this.checked;
-    localStorage.setItem("notifications", notificationsEnabled);
-  });
+const timeout=notifTime-now;
 
-  document.getElementById("glassSlider").addEventListener("input", function () {
-    glassOpacity = this.value;
-    localStorage.setItem("glass", glassOpacity);
-    updateGlass();
-  });
-}
+setTimeout(()=>{
+new Notification(`Time for ${prayer}`);
+playAdhan();
+},timeout);
 
-// ===== INIT =====
-document.addEventListener("DOMContentLoaded", () => {
-  setupSettings();
-  getLocationAndPrayerTimes();
 });
-
-// ===== SERVICE WORKER =====
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js")
-      .then(() => console.log("Service Worker registered"))
-      .catch(err => console.log("Service Worker failed:", err));
-  });
 }
 
+</script>
 
 </body>
 </html>
