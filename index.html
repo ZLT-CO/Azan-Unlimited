@@ -5,284 +5,161 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Azan Unlimited</title>
 
+<link rel="icon" href="favicon.ico">
+<link rel="manifest" href="manifest.json">
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
+*{margin:0;padding:0;box-sizing:border-box}
+
 body{
-    margin:0;
-    font-family:'Inter',sans-serif;
-    background:linear-gradient(135deg,#0f1117,#121826);
-    color:white;
+font-family:'Inter',sans-serif;
+background:linear-gradient(135deg,#0f1117,#1b2a1f);
+color:white;
+min-height:100vh;
+display:flex;
+flex-direction:column;
+align-items:center;
 }
 
 header{
-    padding:20px 30px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    backdrop-filter:blur(10px);
-    background:rgba(0,0,0,0.4);
+padding:30px;
+font-size:1.8rem;
+font-weight:700;
 }
 
-h1{
-    margin:0;
-    font-weight:700;
-    letter-spacing:1px;
+#countdown{
+font-size:1.2rem;
+margin-bottom:20px;
+color:#66bb6a;
 }
 
-button{
-    cursor:pointer;
+.prayer-list{
+width:100%;
+max-width:500px;
 }
 
-.main{
-    padding:40px 20px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
+.prayer-row{
+display:flex;
+justify-content:space-between;
+padding:18px 25px;
+margin:8px 0;
+background:rgba(27,94,32,0.7);
+border-radius:15px;
+transition:.3s;
 }
 
-.card{
-    width:100%;
-    max-width:420px;
-    background:rgba(27,94,32,0.7);
-    backdrop-filter:blur(20px);
-    border-radius:20px;
-    padding:25px;
-    margin-bottom:20px;
-    box-shadow:0 10px 40px rgba(0,200,83,0.4);
-    transition:.3s;
-}
-
-.card:hover{
-    transform:translateY(-5px);
-    box-shadow:0 15px 50px rgba(0,200,83,0.7);
-}
-
-.card h2{
-    margin:0;
-    font-size:1.6rem;
-}
-
-.time{
-    font-size:1.3rem;
-    color:#ddd;
-    margin:8px 0 15px 0;
-}
-
-.btn{
-    background:#66bb6a;
-    border:none;
-    padding:10px 20px;
-    border-radius:12px;
-    font-weight:600;
-    color:white;
-}
-
-.settings{
-    position:fixed;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    background:rgba(20,40,20,0.95);
-    backdrop-filter:blur(25px);
-    padding:30px;
-    border-radius:20px;
-    width:320px;
-    box-shadow:0 0 50px rgba(0,200,83,0.7);
-}
-
-.settings h2{
-    margin-top:0;
-}
-
-.settings label{
-    display:block;
-    margin-top:12px;
-    font-size:0.9rem;
-}
-
-.hidden{
-    display:none;
+.prayer-row.active{
+background:#00c853;
+color:black;
+font-weight:700;
 }
 
 footer{
-    text-align:center;
-    padding:30px;
-    color:#666;
+margin-top:auto;
+padding:20px;
+color:#888;
+font-size:0.8rem;
 }
 </style>
 </head>
 <body>
 
-<header>
-<h1>Azan Unlimited</h1>
-<button class="btn" onclick="toggleSettings()">Settings</button>
-</header>
+<header>Azan Unlimited</header>
+<div id="countdown">Loading prayer times...</div>
 
-<div class="main" id="prayers"></div>
-
-<div id="settingsPanel" class="settings hidden">
-<h2>Settings</h2>
-
-<label>Reciter</label>
-<select id="reciterSelect"></select>
-
-<h3 style="margin-top:20px;">Notifications</h3>
-
-<div id="notifControls"></div>
-
-<button class="btn" style="margin-top:20px;" onclick="toggleSettings()">Close</button>
-</div>
+<div class="prayer-list" id="prayerList"></div>
 
 <footer>© 2026 ZLT Co.</footer>
 
 <script>
 
-// ===== CONFIG =====
-const reciters={
-mishary:{name:"Mishary Rashid",file:"mishary.mp3"},
-saad:{name:"Saad Al-Ghamdi",file:"saad.mp3"},
-maher:{name:"Maher Al-Muaiqly",file:"maher.mp3"},
-sudais:{name:"Sudais",file:"sudais.mp3"}
-};
-
-const allowedPrayers=["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"];
-
-let selectedReciter="mishary";
+const allowed=["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"];
 let prayerTimes={};
-let notifications={};
 
-// ===== INIT =====
-document.addEventListener("DOMContentLoaded",()=>{
-loadReciters();
-loadNotificationSettings();
-getLocation();
-});
-
-// ===== UI =====
-function toggleSettings(){
-document.getElementById("settingsPanel").classList.toggle("hidden");
+async function init(){
+try{
+const coords=await getCoords();
+await fetchTimes(coords.lat,coords.lon);
+render();
+startCountdown();
+}catch(e){
+document.getElementById("countdown").innerText="Could not load prayer times.";
+console.error(e);
+}
 }
 
-function loadReciters(){
-const select=document.getElementById("reciterSelect");
-select.innerHTML="";
-
-for(const key in reciters){
-const option=document.createElement("option");
-option.value=key;
-option.textContent=reciters[key].name;
-select.appendChild(option);
-}
-
-selectedReciter=localStorage.getItem("reciter")||"mishary";
-select.value=selectedReciter;
-
-select.addEventListener("change",function(){
-selectedReciter=this.value;
-localStorage.setItem("reciter",selectedReciter);
+function getCoords(){
+return new Promise((resolve)=>{
+navigator.geolocation.getCurrentPosition(
+pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude}),
+()=>resolve({lat:40.7128,lon:-74.0060}) // fallback NYC
+);
 });
 }
 
-function loadNotificationSettings(){
-const container=document.getElementById("notifControls");
-container.innerHTML="";
-
-allowedPrayers.forEach(prayer=>{
-if(localStorage.getItem("notif_"+prayer)===null){
-localStorage.setItem("notif_"+prayer,"true");
-}
-notifications[prayer]=localStorage.getItem("notif_"+prayer")==="true";
-
-const label=document.createElement("label");
-label.innerHTML=`
-<input type="checkbox" id="toggle_${prayer}" ${notifications[prayer]?"checked":""}>
- ${prayer}
-`;
-container.appendChild(label);
-
-document.getElementById("toggle_"+prayer).addEventListener("change",function(){
-notifications[prayer]=this.checked;
-localStorage.setItem("notif_"+prayer,this.checked);
-});
-});
-}
-
-// ===== FETCH LOCATION =====
-function getLocation(){
-navigator.geolocation.getCurrentPosition(async(pos)=>{
-const lat=pos.coords.latitude;
-const lon=pos.coords.longitude;
-
+async function fetchTimes(lat,lon){
 const res=await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`);
 const data=await res.json();
 prayerTimes=data.data.timings;
-
-renderPrayers();
-scheduleNotifications();
-});
 }
 
-// ===== RENDER =====
-function renderPrayers(){
-const container=document.getElementById("prayers");
+function render(){
+const container=document.getElementById("prayerList");
 container.innerHTML="";
 
-allowedPrayers.forEach(prayer=>{
-const time=prayerTimes[prayer];
-if(!time) return;
+allowed.forEach(name=>{
+if(!prayerTimes[name]) return;
 
-const card=document.createElement("div");
-card.className="card";
+const row=document.createElement("div");
+row.className="prayer-row";
+row.id="row_"+name;
 
-card.innerHTML=`
-<h2>${prayer}</h2>
-<div class="time">${time}</div>
-<button class="btn">Play Adhan</button>
-`;
-
-card.querySelector("button").onclick=playAdhan;
-container.appendChild(card);
+row.innerHTML=`<div>${name}</div><div>${prayerTimes[name]}</div>`;
+container.appendChild(row);
 });
+highlightNext();
 }
 
-// ===== AUDIO =====
-function playAdhan(){
-const audio=new Audio(reciters[selectedReciter].file);
-audio.play();
-}
-
-// ===== NOTIFICATIONS =====
-function scheduleNotifications(){
-
-if(Notification.permission!=="granted"){
-Notification.requestPermission();
-}
-
+function highlightNext(){
 const now=new Date();
 
-allowedPrayers.forEach(prayer=>{
-if(!notifications[prayer]) return;
-
-const time=prayerTimes[prayer];
-if(!time) return;
-
-const [hour,minute]=time.split(":").map(Number);
-
-const notifTime=new Date();
-notifTime.setHours(hour,minute,0,0);
-
-if(notifTime<=now) return;
-
-const timeout=notifTime-now;
-
-setTimeout(()=>{
-new Notification(`Time for ${prayer}`);
-playAdhan();
-},timeout);
-
-});
+for(let name of allowed){
+if(!prayerTimes[name]) continue;
+const [h,m]=prayerTimes[name].split(":").map(Number);
+const t=new Date();
+t.setHours(h,m,0,0);
+if(t>now){
+document.getElementById("row_"+name)?.classList.add("active");
+break;
 }
+}
+}
+
+function startCountdown(){
+setInterval(()=>{
+const now=new Date();
+
+for(let name of allowed){
+if(!prayerTimes[name]) continue;
+const [h,m]=prayerTimes[name].split(":").map(Number);
+const t=new Date();
+t.setHours(h,m,0,0);
+if(t>now){
+const diff=t-now;
+const hrs=Math.floor(diff/3600000);
+const mins=Math.floor((diff%3600000)/60000);
+const secs=Math.floor((diff%60000)/1000);
+document.getElementById("countdown").innerText=
+`Next: ${name} in ${hrs}h ${mins}m ${secs}s`;
+break;
+}
+}
+},1000);
+}
+
+init();
 
 </script>
 
