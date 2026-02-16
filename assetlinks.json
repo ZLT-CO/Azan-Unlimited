@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.zlt_co.twa",
+        "sha256_cert_fingerprints": ["45:9A:0D:C5:A4:71:DB:47:EC:B6:56:23:6C:DC:BD:B5:1C:F9:77:DA:31:F0:AE:86:4A:81:17:CE:82:B7:B4:D8"]
+      }
+    }]
