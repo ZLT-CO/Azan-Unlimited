@@ -152,6 +152,8 @@ color:#aaa;
 
 <script>
 
+<script>
+
 /////////////////////////
 // CONFIG
 /////////////////////////
@@ -160,15 +162,11 @@ const PRAYERS = ["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"];
 
 const RECITERS = [
 { name:"Mishary Rashid", file:"mishary.mp3" },
-{ name:"Saad Al Ghamdi", file:"saad.mp3" }
+{ name:"Saad Al Ghamdi", file:"saad.mp3" },
 ];
 
-// TEMPLATE FOR FUTURE RECITER:
-// { name:"Reciter Name", file:"filename.mp3" },
-
-/////////////////////////
-
 let prayerTimes = {};
+let hijriDate = "";
 let selectedReciter = localStorage.getItem("reciter") || RECITERS[0].file;
 
 /////////////////////////
@@ -176,21 +174,51 @@ let selectedReciter = localStorage.getItem("reciter") || RECITERS[0].file;
 /////////////////////////
 
 async function init(){
+applyTheme();
 populateReciters();
 registerServiceWorker();
 setupInstallButton();
-
-const coords = await getCoords();
-await fetchTimes(coords.lat,coords.lon);
-
+await loadPrayerData();
 renderPrayers();
-startCountdown();
-checkNotifications();
+startPreciseScheduler();
 }
 
 /////////////////////////
-// GEO
+// THEME AUTO
 /////////////////////////
+
+function applyTheme(){
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+document.body.style.background = prefersDark
+? "linear-gradient(-45deg,#0f1117,#1b2a1f,#16351f,#0e2d18)"
+: "linear-gradient(-45deg,#e8f5e9,#c8e6c9,#a5d6a7,#81c784)";
+}
+
+/////////////////////////
+// DAILY CACHE
+/////////////////////////
+
+async function loadPrayerData(){
+const today = new Date().toDateString();
+const cachedDate = localStorage.getItem("prayerDate");
+
+if(cachedDate === today){
+prayerTimes = JSON.parse(localStorage.getItem("prayerTimes"));
+hijriDate = localStorage.getItem("hijriDate");
+return;
+}
+
+const coords = await getCoords();
+const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${coords.lat}&longitude=${coords.lon}&method=2`);
+const data = await res.json();
+
+prayerTimes = data.data.timings;
+hijriDate = data.data.date.hijri.date;
+
+localStorage.setItem("prayerDate",today);
+localStorage.setItem("prayerTimes",JSON.stringify(prayerTimes));
+localStorage.setItem("hijriDate",hijriDate);
+}
 
 function getCoords(){
 return new Promise(resolve=>{
@@ -202,22 +230,12 @@ pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude}),
 }
 
 /////////////////////////
-// FETCH
-/////////////////////////
-
-async function fetchTimes(lat,lon){
-const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=2`);
-const data = await res.json();
-prayerTimes = data.data.timings;
-}
-
-/////////////////////////
 // RENDER
 /////////////////////////
 
 function renderPrayers(){
 const container=document.getElementById("prayerContainer");
-container.innerHTML="";
+container.innerHTML = `<div style="margin-bottom:15px;color:#81c784;">Hijri: ${hijriDate}</div>`;
 
 PRAYERS.forEach(name=>{
 const time = prayerTimes[name];
@@ -231,65 +249,59 @@ container.innerHTML+=`
 <div class="prayer-name">${name}</div>
 <div>${time}</div>
 </div>
-<input type="checkbox" class="toggle"
+<input type="checkbox"
 ${saved?"checked":""}
 onchange="toggleNotify('${name}',this.checked)">
 </div>
 `;
 });
-
-highlightCurrent();
 }
 
 /////////////////////////
-// COUNTDOWN
+// PRECISE SCHEDULER
 /////////////////////////
 
-function startCountdown(){
+function startPreciseScheduler(){
 setInterval(()=>{
-const now=new Date();
+const now = new Date();
+const currentTime = now.toTimeString().slice(0,8);
 
-for(let name of PRAYERS){
-if(!prayerTimes[name]) continue;
-const [h,m]=prayerTimes[name].split(":").map(Number);
-const t=new Date();
-t.setHours(h,m,0,0);
-
-if(t>now){
-const diff=t-now;
-const hrs=Math.floor(diff/3600000);
-const mins=Math.floor((diff%3600000)/60000);
-const secs=Math.floor((diff%60000)/1000);
-
-document.getElementById("countdown").innerText=
-`Next: ${name} in ${hrs}h ${mins}m ${secs}s`;
-
-highlightRow(name);
-break;
+PRAYERS.forEach(name=>{
+if(localStorage.getItem("notify_"+name)==="true"){
+const prayerTime = prayerTimes[name]+":00";
+if(prayerTime === currentTime){
+triggerAzan(name);
 }
 }
+});
 },1000);
 }
 
-function highlightRow(name){
-document.querySelectorAll(".prayer").forEach(p=>p.classList.remove("active"));
-document.getElementById("row_"+name)?.classList.add("active");
+/////////////////////////
+// AZAN
+/////////////////////////
+
+function triggerAzan(name){
+if(Notification.permission==="granted"){
+navigator.serviceWorker.getRegistration().then(reg=>{
+reg.showNotification(name+" Prayer Time",{
+body:"It's time for "+name,
+icon:"favicon.ico",
+vibrate:[200,100,200],
+requireInteraction:true
+});
+});
 }
 
-function highlightCurrent(){
-highlightRow(getNextPrayer());
+new Audio(selectedReciter).play();
 }
 
-function getNextPrayer(){
-const now=new Date();
-for(let name of PRAYERS){
-if(!prayerTimes[name]) continue;
-const [h,m]=prayerTimes[name].split(":").map(Number);
-const t=new Date();
-t.setHours(h,m,0,0);
-if(t>now) return name;
-}
-return PRAYERS[0];
+/////////////////////////
+// TEST BUTTON
+/////////////////////////
+
+function testAzan(){
+triggerAzan("Test Prayer");
 }
 
 /////////////////////////
@@ -298,6 +310,7 @@ return PRAYERS[0];
 
 function populateReciters(){
 const select=document.getElementById("reciterSelect");
+
 RECITERS.forEach(r=>{
 const opt=document.createElement("option");
 opt.value=r.file;
@@ -305,41 +318,31 @@ opt.text=r.name;
 if(r.file===selectedReciter) opt.selected=true;
 select.appendChild(opt);
 });
+
 select.onchange=e=>{
 selectedReciter=e.target.value;
 localStorage.setItem("reciter",selectedReciter);
 };
+
+const previewBtn=document.createElement("button");
+previewBtn.innerText="Preview Azan";
+previewBtn.onclick=()=>new Audio(selectedReciter).play();
+select.parentNode.appendChild(previewBtn);
 }
 
 /////////////////////////
-// NOTIFICATIONS
+// NOTIFY TOGGLE
 /////////////////////////
 
-function toggleNotify(name,value){
-localStorage.setItem("notify_"+name,value);
-}
-
-function checkNotifications(){
+function toggleNotify(name,val){
+localStorage.setItem("notify_"+name,val);
 if(Notification.permission!=="granted"){
 Notification.requestPermission();
 }
-setInterval(()=>{
-const now=new Date();
-const currentTime=now.toTimeString().slice(0,5);
-
-PRAYERS.forEach(name=>{
-if(localStorage.getItem("notify_"+name)==="true"){
-if(prayerTimes[name]===currentTime){
-new Notification(name+" Prayer Time");
-new Audio(selectedReciter).play();
-}
-}
-});
-},60000);
 }
 
 /////////////////////////
-// PWA
+// SERVICE WORKER
 /////////////////////////
 
 function registerServiceWorker(){
@@ -348,6 +351,10 @@ navigator.serviceWorker.register("service-worker.js");
 }
 }
 
+/////////////////////////
+// INSTALL
+/////////////////////////
+
 let deferredPrompt;
 function setupInstallButton(){
 window.addEventListener("beforeinstallprompt",e=>{
@@ -355,22 +362,8 @@ e.preventDefault();
 deferredPrompt=e;
 const btn=document.getElementById("installBtn");
 btn.style.display="block";
-btn.onclick=()=>{
-deferredPrompt.prompt();
-};
+btn.onclick=()=>deferredPrompt.prompt();
 });
-}
-
-/////////////////////////
-// MODAL
-/////////////////////////
-
-function openSettings(){
-document.getElementById("settingsModal").style.display="flex";
-}
-
-function closeSettings(){
-document.getElementById("settingsModal").style.display="none";
 }
 
 /////////////////////////
@@ -378,5 +371,6 @@ document.getElementById("settingsModal").style.display="none";
 init();
 
 </script>
+
 </body>
 </html>
