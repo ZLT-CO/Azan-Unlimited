@@ -1,22 +1,14 @@
-const CACHE = "azan-v2";
-
 self.addEventListener("install",e=>{
-e.waitUntil(
-caches.open(CACHE).then(cache=>{
-return cache.addAll([
-"./",
-"./index.html",
-"./manifest.json",
-"./favicon.ico",
-"./mishary.mp3",
-"./saad.mp3"
-]);
-})
-);
+self.skipWaiting();
 });
 
-self.addEventListener("fetch",e=>{
-e.respondWith(
-caches.match(e.request).then(res=>res||fetch(e.request))
+self.addEventListener("activate",e=>{
+self.clients.claim();
+});
+
+self.addEventListener("notificationclick",function(event){
+event.notification.close();
+event.waitUntil(
+clients.openWindow("./")
 );
 });
