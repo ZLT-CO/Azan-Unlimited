@@ -155,7 +155,10 @@ const RECITERS = [
 let prayerTimes = {};
 let hijriDate = "";
 let selectedReciter = localStorage.getItem("reciter") || RECITERS[0].file;
-let lastTriggered = null; // prevents spam
+
+let lastTriggeredKey = null;
+let audioUnlocked = false;
+let azanAudio = null;
 
 ////////////////////////////
 // INIT
@@ -164,14 +167,53 @@ let lastTriggered = null; // prevents spam
 async function init(){
   applyTheme();
   populateReciters();
+  setupAudioUnlock();
+  registerServiceWorker();
   await loadPrayerData();
   renderPrayers();
   startScheduler();
   updateCountdown();
+  resetDailyTrigger();
 
   if ("Notification" in window && Notification.permission !== "granted") {
     Notification.requestPermission();
   }
+}
+
+////////////////////////////
+// SERVICE WORKER
+////////////////////////////
+
+function registerServiceWorker(){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  }
+}
+
+////////////////////////////
+// AUDIO UNLOCK (CRITICAL)
+////////////////////////////
+
+function setupAudioUnlock(){
+  azanAudio = new Audio(selectedReciter);
+  azanAudio.preload = "auto";
+
+  function unlock(){
+    if(audioUnlocked) return;
+
+    azanAudio.play().then(()=>{
+      azanAudio.pause();
+      azanAudio.currentTime = 0;
+      audioUnlocked = true;
+      console.log("Audio unlocked");
+    }).catch(()=>{});
+
+    document.removeEventListener("click", unlock);
+    document.removeEventListener("touchstart", unlock);
+  }
+
+  document.addEventListener("click", unlock);
+  document.addEventListener("touchstart", unlock);
 }
 
 ////////////////////////////
@@ -201,8 +243,11 @@ async function loadPrayerData(){
     }
 
     const coords = await getCoords();
-    const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${coords.lat}&longitude=${coords.lon}&method=2`);
-    if(!res.ok) throw new Error("API fail");
+    const res = await fetch(
+      `https://api.aladhan.com/v1/timings?latitude=${coords.lat}&longitude=${coords.lon}&method=2`
+    );
+
+    if(!res.ok) throw new Error();
 
     const data = await res.json();
     prayerTimes = data.data.timings;
@@ -212,7 +257,7 @@ async function loadPrayerData(){
     localStorage.setItem("prayerTimes",JSON.stringify(prayerTimes));
     localStorage.setItem("hijriDate",hijriDate);
 
-  }catch(e){
+  }catch{
     prayerTimes={
       Fajr:"05:00",
       Sunrise:"06:30",
@@ -231,7 +276,6 @@ function getCoords(){
       resolve({lat:40.7128,lon:-74.0060});
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude}),
       ()=>resolve({lat:40.7128,lon:-74.0060})
@@ -240,12 +284,12 @@ function getCoords(){
 }
 
 ////////////////////////////
-// RENDER UI
+// RENDER
 ////////////////////////////
 
 function renderPrayers(){
   const container=document.getElementById("prayerContainer");
-  container.innerHTML=
+  container.innerHTML =
   `<div style="margin-bottom:10px;color:#81c784;">Hijri: ${hijriDate}</div>`;
 
   PRAYERS.forEach(name=>{
@@ -264,27 +308,6 @@ function renderPrayers(){
   });
 
   highlightNext();
-}
-
-////////////////////////////
-// HIGHLIGHT NEXT PRAYER
-////////////////////////////
-
-function highlightNext(){
-  const now=new Date();
-
-  for(let name of PRAYERS){
-    if(!prayerTimes[name]) continue;
-
-    const [h,m]=prayerTimes[name].split(":").map(Number);
-    const t=new Date();
-    t.setHours(h,m,0,0);
-
-    if(t>now){
-      document.getElementById("row_"+name)?.classList.add("active");
-      break;
-    }
-  }
 }
 
 ////////////////////////////
@@ -317,18 +340,25 @@ function updateCountdown(){
 }
 
 ////////////////////////////
-// SCHEDULER (NO SPAM)
+// SCHEDULER
 ////////////////////////////
 
 function startScheduler(){
   setInterval(()=>{
-    const now=new Date().toTimeString().slice(0,5);
+    const now = new Date();
+    const timeKey = now.toTimeString().slice(0,5);
+    const todayKey = now.toDateString();
 
     PRAYERS.forEach(name=>{
       if(localStorage.getItem("notify_"+name)==="true"){
-        if(prayerTimes[name]===now && lastTriggered !== name+now){
-          lastTriggered = name+now;
-          triggerAzan(name);
+        if(prayerTimes[name]===timeKey){
+
+          const triggerKey = todayKey + "_" + name;
+
+          if(lastTriggeredKey !== triggerKey){
+            lastTriggeredKey = triggerKey;
+            triggerAzan(name);
+          }
         }
       }
     });
@@ -337,25 +367,55 @@ function startScheduler(){
 }
 
 ////////////////////////////
-// AZAN TRIGGER
+// DAILY RESET
+////////////////////////////
+
+function resetDailyTrigger(){
+  setInterval(()=>{
+    const today = new Date().toDateString();
+    if(localStorage.getItem("lastDay") !== today){
+      lastTriggeredKey = null;
+      localStorage.setItem("lastDay", today);
+    }
+  },60000);
+}
+
+////////////////////////////
+// AZAN
 ////////////////////////////
 
 function triggerAzan(name){
 
-  // Notification
-  if("Notification" in window && Notification.permission==="granted"){
-    new Notification(`${name} Prayer Time`, {
-      body: `It's time for ${name}`,
-      silent: false
+  // Try service worker notification first
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.getRegistration().then(reg=>{
+      if(reg){
+        reg.showNotification(`${name} Prayer Time`, {
+          body: `It's time for ${name}`,
+          icon: "favicon.ico",
+          vibrate: [200,100,200],
+          requireInteraction: true
+        });
+      }
     });
+  } else if(Notification.permission==="granted"){
+    new Notification(`${name} Prayer Time`);
   }
 
-  // Audio (works reliably in hybrid apps)
-  try{
-    const audio = new Audio(selectedReciter);
-    audio.volume = 1.0;
-    audio.play().catch(()=>{});
-  }catch(e){}
+  playAzan();
+}
+
+function playAzan(){
+  if(!azanAudio){
+    azanAudio = new Audio(selectedReciter);
+  }
+
+  azanAudio.src = selectedReciter;
+  azanAudio.volume = 1.0;
+
+  azanAudio.play().catch(()=>{
+    console.log("Autoplay blocked.");
+  });
 }
 
 ////////////////////////////
@@ -364,7 +424,6 @@ function triggerAzan(name){
 
 function toggleNotify(name,val){
   localStorage.setItem("notify_"+name,val);
-
   if(Notification.permission!=="granted"){
     Notification.requestPermission();
   }
@@ -384,16 +443,16 @@ function populateReciters(){
   select.onchange=e=>{
     selectedReciter=e.target.value;
     localStorage.setItem("reciter",selectedReciter);
+    azanAudio = new Audio(selectedReciter);
   };
 }
 
 function previewAzan(){
-  const audio=new Audio(selectedReciter);
-  audio.play();
+  playAzan();
 }
 
 function testAzan(){
-  triggerAzan("Test Prayer");
+  triggerAzan("Test");
 }
 
 function openSettings(){
